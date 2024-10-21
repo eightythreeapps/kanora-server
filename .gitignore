@@ -1,0 +1,48 @@
+# Node modules folder
+node_modules/
+
+# Media folder
+media/
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+
+# Debugging files
+.vscode/
+*.swp
+
+# Coverage directory for testing output
+coverage/
+
+# npm package lock files
+package-lock.json
+yarn.lock
+
+# Build output directories
+dist/
+build/
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# IDE specific files (optional)
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Mac System files (optional)
+*.DS_Store
