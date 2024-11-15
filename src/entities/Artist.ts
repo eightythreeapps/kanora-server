@@ -1,23 +1,33 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
-import { Album } from "./Album";
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { Album } from "./Album.js";
+import { Track } from "./Track.js";
 
 @Entity()
 export class Artist {
     @PrimaryGeneratedColumn("uuid")
-    id?: string;
+    id!: string;
 
-    @Column()
+    @Column({ type: "text" })
     name!: string;
 
-    @Column()
-    description!: string;
+    @Column({ type: "text", nullable: true })
+    musicbrainzId: string | null = null;
 
-    @Column()
-    createdAt: Date = new Date();
+    @Column({ type: "text", nullable: true })
+    discogsId: string | null = null;
 
-    @Column()
-    updatedAt: Date = new Date();
+    @Column({ type: "text", nullable: true })
+    artistId: string | null = null;
 
-    @Column()
-    albums?: Album[];
+    @Column({ type: 'text' })
+    createdAt!: string;
+
+    @Column({ type: 'text' })
+    updatedAt!: string;
+
+    @OneToMany(() => Album, album => album.artist)
+    albums!: Album[];
+
+    @OneToMany(() => Track, track => track.artists)
+    tracks!: Track[];
 }
