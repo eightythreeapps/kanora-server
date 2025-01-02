@@ -6,8 +6,6 @@ media/
 public/artwork
 public/library/music
 
-/database.sqlite
-
 # Logs
 logs
 *.log
