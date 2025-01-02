@@ -3,6 +3,10 @@ node_modules/
 
 # Media folder
 media/
+public/artwork
+public/library/music
+
+/database.sqlite
 
 # Logs
 logs

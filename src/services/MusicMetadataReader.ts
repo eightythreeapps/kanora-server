@@ -4,8 +4,10 @@ import { IMusicMetadataReader,IMusicMetadata, IMusicExternalId, ExternalIdType} 
 export class MusicMetadataReader implements IMusicMetadataReader {
     async readMetadata(filePath: string): Promise<IMusicMetadata> {
         const metadata = await parseFile(filePath);
+        console.log(metadata)
         return {
             common: {
+                albumArtwork: metadata.common.picture,
                 albumartist: metadata.common.albumartist,
                 artists: metadata.common.artists,
                 album: metadata.common.album,
