@@ -14,4 +14,16 @@ export interface IFileService {
         trackName: string,
         sourcePath: string
     }): Promise<string>;
+
+    makeUrlFriendly(str: string): String;
+}
+
+export interface IAudioMetadata {
+    title?: string;
+    artist?: string;
+    album?: string;
+    year?: string;
+    track?: { no: number | null; of: number | null; };
+    genre?: string[];
+    // Add other metadata fields as needed
 } 

@@ -1,3 +1,5 @@
+import { IPicture } from "music-metadata";
+
 export enum ExternalIdType {
     Musicbraniz = "Musicbraniz",
     Discogs = "Discogs"
@@ -14,6 +16,7 @@ export interface IMusicMetadata {
         genres?: string[];
         year?: number;
         encodedby?: string;
+        albumArtwork?: IPicture[];
         externalIds?: [IMusicExternalId];
     };
     format?: IMusicFormat;

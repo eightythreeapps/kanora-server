@@ -33,4 +33,7 @@ export class Album {
 
     @Column({ type: 'text' })
     updatedAt!: string;
+
+    @Column({ type:'text', nullable: true })
+    albumArtPath?: string;
 }

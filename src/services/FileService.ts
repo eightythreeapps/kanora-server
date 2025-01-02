@@ -60,22 +60,32 @@ export class FileService implements IFileService {
         const sanitizedTrack = this.sanitizePathComponent(params.trackName);
         const trackNum = params.trackNumber?.toString().padStart(2, '0') || '00';
         const fileExtension = this.getFileExtension(params.sourcePath);
-        
+        // Get base URL from environment variable or default to localhost
         const newFileName = `${trackNum}_${sanitizedTrack}${fileExtension}`;
         const newFilePath = this.joinPaths(
-            process.cwd(),
-            'media',
+            'public',
             'library',
+            'music',
             sanitizedArtist,
             sanitizedAlbum,
             newFileName
         );
 
-        console.log(newFilePath)
+        console.log("Moving file to "+newFilePath)
 
         await this.ensureDirectoryExists(newFilePath);
         await this.moveFile(params.sourcePath, newFilePath);
 
         return newFilePath;
     }
+
+    // Helper function to make strings URL-friendly
+    makeUrlFriendly(str: string):String {
+        return str
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric chars with hyphens
+            .replace(/^-+|-+$/g, '')      // Remove leading/trailing hyphens
+            .trim();
+    };
+
 } 
