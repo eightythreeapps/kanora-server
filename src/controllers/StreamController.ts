@@ -2,21 +2,22 @@ import { Router, Request, Response, RequestHandler } from "express";
 import * as fs from 'fs';
 import { stat } from 'fs/promises';
 import { IMusicRepository } from '../interfaces/IMusicRepository';
+import { IController } from "../interfaces/IController";
 
-export class StreamController {
-    private router: Router;
+export class StreamController implements IController {
+    router: Router;
 
     constructor(private musicRepository: IMusicRepository) {
         this.router = Router();
         this.initializeRoutes();
     }
 
-    private initializeRoutes() {
+    initializeRoutes() {
         const handler: RequestHandler = this.streamTrack.bind(this);
         this.router.get('/track/:trackId', handler);
     }
 
-    public getRouter() {
+    getRouter() {
         return this.router;
     }
 
@@ -39,11 +40,12 @@ export class StreamController {
                 const end = parts[1] ? parseInt(parts[1]) : fileStat.size - 1;
                 const chunkSize = (end - start) + 1;
 
+                const contentType = this.getContentType(filePath);
                 res.writeHead(206, {
                     'Content-Range': `bytes ${start}-${end}/${fileStat.size}`,
                     'Accept-Ranges': 'bytes',
                     'Content-Length': chunkSize,
-                    'Content-Type': 'audio/mp4'
+                    'Content-Type': contentType
                 });
 
                 fs.createReadStream(filePath, { start, end }).pipe(res);
@@ -57,6 +59,17 @@ export class StreamController {
         } catch (error) {
             console.error('Streaming error:', error);
             res.status(500).json({ error: 'Failed to stream track' });
+        }
+    }
+
+    private getContentType(filePath: string): string {
+        const ext = filePath.split('.').pop()?.toLowerCase();
+        switch (ext) {
+            case 'mp3': return 'audio/mpeg';
+            case 'm4a': return 'audio/mp4';
+            case 'wav': return 'audio/wav';
+            case 'ogg': return 'audio/ogg';
+            default: return 'audio/mpeg'; // fallback
         }
     }
 } 

@@ -4,8 +4,6 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import libraryController from "./controllers/library.js";
-import systemController from "./controllers/system.js";
 import { StreamController } from "./controllers/StreamController.js"
 import { DataSource } from "typeorm";
 import { Artist } from "./entities/Artist.js";
@@ -14,6 +12,10 @@ import { Track } from "./entities/Track.js";
 import { LibraryMetadata } from "./entities/LibraryMetadata.js";
 import { MusicRepository } from "./services/MusicRepository.js";
 import { FileService } from "./services/FileService.js";
+import { SystemController } from "./controllers/SystemController.js";
+import { MusicMetadataReader } from "./services/MusicMetadataReader.js";
+import { MusicLibraryService } from "./services/MusicLibraryService.js";
+import { LibraryController } from "./controllers/LibraryController.js";
 
 export const AppDataSource = new DataSource({ 
   type: "sqlite",
@@ -29,8 +31,13 @@ await AppDataSource.initialize();
 // defining the Express app
 const app = express();
 const fileService = new FileService();
-const repository = new MusicRepository(AppDataSource, fileService);
-const streamController = new StreamController(repository);
+const musicRepository = new MusicRepository(AppDataSource, fileService);
+const metadataReader = new MusicMetadataReader();
+const libraryService = new MusicLibraryService(fileService, metadataReader, musicRepository);
+
+const streamController = new StreamController(musicRepository);
+const systemController = new SystemController();
+const libraryController = new LibraryController(libraryService,musicRepository,AppDataSource,metadataReader)
 
 // adding Helmet to enhance your Rest API's security
 app.use(helmet());
@@ -45,8 +52,8 @@ app.use(cors());
 app.use(morgan('combined'));
 
 // defining an endpoint to return all ads
-app.use('/api/library', libraryController)
-app.use('/api/system', systemController)
+app.use('/api/library', libraryController.getRouter())
+app.use('/api/system', systemController.getRouter())
 app.use('/api/stream', streamController.getRouter())
 
 // starting the server
