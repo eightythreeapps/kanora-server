@@ -1,21 +1,27 @@
+/**
+ * Interface for file system operations
+ */
 export interface IFileService {
-    scan(directory: string): Promise<string[]>;
+    /**
+     * Scans a directory for files
+     * @param directory The directory to scan
+     * @returns Promise<string[]> Array of file paths
+     */
+    scanDirectory(directory: string): Promise<string[]>;
 
     /**
-     * Creates a standardized music file path and moves the file to that location
-     * 
-     * @param params Object containing the necessary file information
-     * @returns Promise<string> The new file path
+     * Checks if a file exists
+     * @param path The file path to check
+     * @returns Promise<boolean>
      */
-    organizeMusicFile(params: {
-        artistName: string,
-        albumName: string,
-        trackNumber: number | null,
-        trackName: string,
-        sourcePath: string
-    }): Promise<string>;
+    exists(path: string): Promise<boolean>;
 
-    makeUrlFriendly(str: string): String;
+    /**
+     * Gets the size of a file
+     * @param path The file path
+     * @returns Promise<number> File size in bytes
+     */
+    getSize(path: string): Promise<number>;
 }
 
 export interface IAudioMetadata {

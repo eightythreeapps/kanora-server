@@ -1,70 +1,78 @@
 import { IFileService } from "../interfaces/IFileService.js";
 import { IMusicMetadataReader } from "../interfaces/IMusicMetadataReader.js";
 import { IMusicRepository } from "../interfaces/IMusicRepository.js";
+import { LibraryMetadata } from "../entities/LibraryMetadata.js";
+import { ILibraryResponse } from "../interfaces/IMusicRepository.js";
 
-/**
- * Service responsible for managing the music library, including scanning directories
- * and maintaining the music database.
- * 
- * @class MusicLibraryService
- * @implements {IMusicLibraryService}
- * 
- * @remarks
- * This service coordinates between three main components:
- * - File Scanner: Discovers music files in the filesystem
- * - Metadata Reader: Extracts metadata from music files
- * - Repository: Handles database operations for music tracks
- * 
- * @example
- * ```typescript
- * const service = new MusicLibraryService(
- *   new FileScanner(),
- *   new MusicMetadataReader(),
- *   new MusicRepository()
- * );
- * await service.scanLibrary("/music/directory");
- * ```
- */
+const IMPORT_DIR = 'media/import';
+
 export class MusicLibraryService {
     constructor(
-        private fileScanner: IFileService,
+        private fileService: IFileService,
         private metadataReader: IMusicMetadataReader,
-        private repository: IMusicRepository
+        private musicRepository: IMusicRepository
     ) {}
 
     /**
-     * Scans a directory for music files and updates the music library database.
-     * 
-     * @param directory - The path to the directory to scan for music files
-     * @throws {Error} If the directory cannot be accessed or scanned
-     * @returns Promise<void> - Resolves when the scan is complete
-     * 
-     * @remarks
-     * This method will:
-     * 1. Scan the specified directory for music files
-     * 2. Read metadata from each found file
-     * 3. Update or insert the track information in the database
-     * 
-     * Individual file processing errors are logged but don't stop the overall scan.
-     * 
-     * @example
-     * ```typescript
-     * await musicLibraryService.scanLibrary("/path/to/music");
-     * ```
+     * Scans the library and returns current metadata
+     * @returns Promise<ILibraryResponse> Current library state
      */
-    async importMedia(directory: string): Promise<void> {
-
-        //Fetch the files using the FileScanner helper
-        const files = await this.fileScanner.scan(directory);
-        
-        //Read the metadata for each track and add to the DB if it doesn not exist
-        for (const file of files) {
-            try {
-                const metadata = await this.metadataReader.readMetadata(file);
-                await this.repository.upsertTrack(metadata, file);
-            } catch (error) {
-                console.error(`Error processing ${file}:`, error);
-            }
+    public async scanLibrary(): Promise<ILibraryResponse> {
+        try {
+            await this.importNewMusic();
+            return this.musicRepository.getAllArtists();
+        } catch (error) {
+            console.error('Error scanning library:', error);
+            throw error;
         }
     }
-} 
+
+    public async importNewMusic(): Promise<void> {
+        try {
+            const files = await this.fileService.scanDirectory(IMPORT_DIR);
+            let importedCount = 0;
+
+            for (const file of files) {
+                if (file.endsWith('.mp3') || file.endsWith('.m4a')) {
+                    await this.processImportedFile(file);
+                    importedCount++;
+                }
+            }
+
+            if (importedCount > 0) {
+                const tracks = await this.musicRepository.getAllTracks();
+                const albums = await this.musicRepository.getAllAlbums();
+                const artists = await this.musicRepository.getAllArtists();
+
+                await this.musicRepository.saveLibraryMetadata(
+                    new LibraryMetadata({
+                        lastScanDate: new Date(),
+                        totalTracks: tracks.length,
+                        totalAlbums: albums.length,
+                        totalArtists: artists.artists.length
+                    })
+                );
+            }
+        } catch (error) {
+            console.error('Error importing music:', error);
+            throw error;
+        }
+    }
+
+    private async processImportedFile(filePath: string): Promise<void> {
+        try {
+            const metadata = await this.metadataReader.readMetadata(filePath);
+            if (!metadata) {
+                console.error(`Failed to read metadata for file: ${filePath}`);
+                return;
+            }
+
+            // Process the track using the repository
+            await this.musicRepository.processTrack(metadata, filePath);
+
+        } catch (error) {
+            console.error(`Error processing file ${filePath}:`, error);
+            throw error;
+        }
+    }
+}

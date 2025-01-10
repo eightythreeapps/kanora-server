@@ -5,43 +5,27 @@ export enum ExternalIdType {
     Discogs = "Discogs"
 }
 
+/**
+ * Interface for music metadata
+ */
 export interface IMusicMetadata {
-    common: {
-        albumartist?: string;
-        artists?: string[];
-        album?: string;
-        title?: string;
-        track?: { no: number, of: number };
-        disk?: { no: number, of: number };
-        genres?: string[];
-        year?: number;
-        encodedby?: string;
-        albumArtwork?: IPicture[];
-        externalIds?: [IMusicExternalId];
-    };
-    format?: IMusicFormat;
-    
-}
-
-export interface IMusicFormat {
-    tagTypes?: string[];
-    lossless?: boolean;
-    container?: string;
-    codec?: string;
-    sampleRate?: number;
-    numberOfChannels?: number;
-    bitrate?: number;
-    codecProfile?: string;
-    numberOfSamples?: number;
+    title: string;
+    artist: string;
+    album: string;
+    year?: number;
+    trackNumber?: number;
     duration?: number;
+    artwork?: Buffer;
 }
 
-export interface IMusicExternalId {
-    type?: ExternalIdType,
-    albumId?: string;
-    artistId?: string;
-}
-
+/**
+ * Interface for reading music metadata from files
+ */
 export interface IMusicMetadataReader {
-    readMetadata(filePath: string): Promise<IMusicMetadata>;
+    /**
+     * Reads metadata from a music file
+     * @param filePath Path to the music file
+     * @returns Promise<IMusicMetadata | null> The metadata if successfully read, null otherwise
+     */
+    readMetadata(filePath: string): Promise<IMusicMetadata | null>;
 } 

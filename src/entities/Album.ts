@@ -1,39 +1,28 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, OneToOne } from "typeorm";
-import { Track } from "./Track.js";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany } from "typeorm";
 import { Artist } from "./Artist.js";
+import { Track } from "./Track.js";
 
 @Entity()
 export class Album {
     @PrimaryGeneratedColumn("uuid")
     id!: string;
 
-    @Column({ type: "text" })
+    @Column({ type: "varchar" })
     title!: string;
 
-    @Column({ type: "int", nullable: true })
-    year: number | null = null;
-
-    @Column({ type: "text", nullable: true })
-    musicbrainzId: string | null = null;
-
-    @Column({ type: "text", nullable: true })
-    discogsId: string | null = null;
-
-    @Column({ type: "text", nullable: true })
-    albumId: string | null = null;
-
-    @ManyToOne(() => Artist, artist => artist.albums)
+    @ManyToOne(() => Artist, artist => artist.albums, { nullable: false })
     artist!: Artist;
+
+    @Column({ type: "int", nullable: true })
+    year?: number;
+
+    @Column({ type: "varchar", nullable: true })
+    artworkUrl?: string;
 
     @OneToMany(() => Track, track => track.album)
     tracks!: Track[];
 
-    @Column({ type: 'text' })
-    createdAt!: string;
-
-    @Column({ type: 'text' })
-    updatedAt!: string;
-
-    @Column({ type:'text', nullable: true })
-    albumArtPath?: string;
+    constructor(partial: Partial<Album> = {}) {
+        Object.assign(this, partial);
+    }
 }

@@ -3,7 +3,7 @@ import path from 'path';
 import { IFileService } from '../interfaces/IFileService.js';
 
 export class FileService implements IFileService {
-    async scan(directory: string): Promise<string[]> {
+    async scanDirectory(directory: string): Promise<string[]> {
         const allFiles: string[] = [];
 
         async function scanRecursively(dir: string): Promise<void> {
@@ -27,65 +27,17 @@ export class FileService implements IFileService {
         return allFiles;
     }
 
-    private sanitizePathComponent(component: string): string {
-        return component.replace(/[/\\?%*:|"<>]/g, '-');
+    async exists(path: string): Promise<boolean> {
+        try {
+            await fs.promises.access(path);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
-    private getFileExtension(filePath: string): string {
-        return path.extname(filePath);
+    async getSize(path: string): Promise<number> {
+        const stats = await fs.promises.stat(path);
+        return stats.size;
     }
-
-    private joinPaths(...paths: string[]): string {
-        return path.join(...paths);
-    }
-
-    private async ensureDirectoryExists(filePath: string): Promise<void> {
-        const directory = path.dirname(filePath);
-        await fs.promises.mkdir(directory, { recursive: true });
-    }
-
-    private async moveFile(sourcePath: string, destinationPath: string): Promise<void> {
-        await fs.promises.rename(sourcePath, destinationPath);
-    }
-
-    async organizeMusicFile(params: {
-        artistName: string,
-        albumName: string,
-        trackNumber: number | null,
-        trackName: string,
-        sourcePath: string
-    }): Promise<string> {
-        const sanitizedArtist = this.sanitizePathComponent(params.artistName);
-        const sanitizedAlbum = this.sanitizePathComponent(params.albumName);
-        const sanitizedTrack = this.sanitizePathComponent(params.trackName);
-        const trackNum = params.trackNumber?.toString().padStart(2, '0') || '00';
-        const fileExtension = this.getFileExtension(params.sourcePath);
-        // Get base URL from environment variable or default to localhost
-        const newFileName = `${trackNum}_${sanitizedTrack}${fileExtension}`;
-        const newFilePath = this.joinPaths(
-            'public',
-            'library',
-            'music',
-            sanitizedArtist,
-            sanitizedAlbum,
-            newFileName
-        );
-
-        console.log("Moving file to "+newFilePath)
-
-        await this.ensureDirectoryExists(newFilePath);
-        await this.moveFile(params.sourcePath, newFilePath);
-
-        return newFilePath;
-    }
-
-    // Helper function to make strings URL-friendly
-    makeUrlFriendly(str: string):String {
-        return str
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric chars with hyphens
-            .replace(/^-+|-+$/g, '')      // Remove leading/trailing hyphens
-            .trim();
-    };
-
 } 

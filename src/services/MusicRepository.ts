@@ -1,206 +1,140 @@
 import { DataSource } from 'typeorm';
 import { IMusicMetadata } from '../interfaces/IMusicMetadataReader.js';
-import { IMusicRepository } from '../interfaces/IMusicRepository.js';
+import { IMusicRepository, ILibraryResponse } from '../interfaces/IMusicRepository.js';
 import { Artist } from '../entities/Artist.js';
 import { Album } from '../entities/Album.js';
 import { Track } from '../entities/Track.js';
 import { IFileService } from '../interfaces/IFileService.js';
-import * as path from 'node:path';
-import { titleCase } from 'typeorm/util/StringUtils.js';
-import { format } from 'morgan';
-import { APIResponse } from '../interfaces/IAPIResponse.js';
-import { ArtistResponse } from '../interfaces/IArtistResponse.js';
+import * as path from 'path';
 import * as fs from 'fs/promises';
-import { Buffer } from 'buffer';
 import { LibraryMetadata } from '../entities/LibraryMetadata.js';
-import { LibraryMetadataResponse } from '../interfaces/ILibraryMetadataResponse.js';
-import * as crypto from 'crypto';
+
+// Public directories for serving files
+const PUBLIC_DIR = 'public';
+const ARTWORK_DIR = path.join(PUBLIC_DIR, 'artwork');
+const LIBRARY_DIR = path.join(PUBLIC_DIR, 'library');
 
 export class MusicRepository implements IMusicRepository {
     constructor(
         private dataSource: DataSource,
         private fileService: IFileService
-    ) {}
+    ) {
+        // Ensure public directories exist
+        Promise.all([
+            fs.mkdir(ARTWORK_DIR, { recursive: true }),
+            fs.mkdir(LIBRARY_DIR, { recursive: true })
+        ]).catch(console.error);
+    }
 
     private get trackRepo() { return this.dataSource.getRepository(Track); }
     private get albumRepo() { return this.dataSource.getRepository(Album); }
     private get artistRepo() { return this.dataSource.getRepository(Artist); }
-    
-    private get metadataRepo() { 
-        return this.dataSource.getRepository(LibraryMetadata); 
-    }
-   
-    async upsertArtist(name: string): Promise<Artist> {
-        const existing = await this.artistRepo.findOne({ where: { name } });
-        if (existing) return existing;
+    private get metadataRepo() { return this.dataSource.getRepository(LibraryMetadata); }
 
-        const now = new Date().toISOString();
-        return await this.artistRepo.save({
-            name,
-            createdAt: now,
-            updatedAt: now
-        });
+    // Helper method to save artwork and return URL
+    private async saveArtwork(albumId: string, artwork: Buffer): Promise<string> {
+        const artworkPath = path.join(ARTWORK_DIR, `${albumId}.jpg`);
+        await fs.writeFile(artworkPath, artwork);
+        return `/artwork/${albumId}.jpg`;
     }
 
-    private async saveAlbumArtwork(
-        artwork: { data: Buffer; format: string },
-        albumId: string,
-    ): Promise<string> {
-        const artworkBuffer = Buffer.from(artwork.data);
-        const fileExtension = artwork.format.split('/')[1] || 'jpg';
-        
-        const artworkFileName = `${albumId}.${fileExtension}`;
-        const albumArtPath = path.join('public', 'artwork', artworkFileName);
+    // Helper method to copy a file to the library and return its new path
+    private async copyToLibrary(sourcePath: string, artistName: string, albumTitle: string, trackTitle: string): Promise<string> {
+        // Create artist and album directories
+        const artistDir = path.join(LIBRARY_DIR, this.sanitizePath(artistName));
+        const albumDir = path.join(artistDir, this.sanitizePath(albumTitle));
+        await fs.mkdir(artistDir, { recursive: true });
+        await fs.mkdir(albumDir, { recursive: true });
 
-        await fs.mkdir(path.join('public', 'artwork'), { recursive: true });
+        // Generate new file path
+        const extension = path.extname(sourcePath);
+        const fileName = this.sanitizePath(trackTitle) + extension;
+        const destPath = path.join(albumDir, fileName);
+        const relativePath = path.relative(PUBLIC_DIR, destPath);
 
-        try {
-            await fs.writeFile(albumArtPath, artworkBuffer);
-            return albumArtPath;
-        } catch (error) {
-            console.error('Failed to save album artwork:', error);
-            return "";
-        }
+        // Copy the file
+        await fs.copyFile(sourcePath, destPath);
+
+        // Return the path relative to the public directory
+        return '/' + relativePath.split(path.sep).join('/');
     }
 
-    async upsertAlbum(metadata: IMusicMetadata, artist: Artist): Promise<Album> {
-        if (!metadata.common.album) {
-            throw new Error('Album title is required');
-        }
+    // Helper method to sanitize file/directory names
+    private sanitizePath(name: string): string {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+    }
 
-        const now = new Date().toISOString();
+    // Helper method to find or create an album
+    private async findOrCreateAlbum(metadata: IMusicMetadata, artist: Artist): Promise<Album> {
         const existing = await this.albumRepo.findOne({
             where: { 
-                title: metadata.common.album,
+                title: metadata.album,
                 artist: { id: artist.id }
             }
         });
-
         if (existing) return existing;
 
-        const albumId = crypto.randomUUID();
-
-        let albumArtPath = "";
-
-        if (metadata.common.albumArtwork && metadata.common.albumArtwork.length > 0) {
-            albumArtPath = await this.saveAlbumArtwork(
-                {
-                    data: Buffer.from(metadata.common.albumArtwork[0].data), 
-                    format: metadata.common.albumArtwork[0].format
-                },
-                albumId
-            );
-        }
-
-        return await this.albumRepo.save({
-            id: albumId,
-            title: metadata.common.album,
-            createdAt: now, 
-            updatedAt: now,
-            year: metadata.common.year || null,
+        const album = await this.saveAlbum({
+            title: metadata.album,
             artist,
-            albumArtPath
-        });
-    }
-
-    async upsertTrack(metadata: IMusicMetadata, filePath: string): Promise<Track> {
-        const fileName = path.basename(filePath, path.extname(filePath));
-        const trackTitle = metadata.common.title || fileName;
-
-        const existing = await this.trackRepo.findOne({
-            where: { filePath }
+            year: metadata.year
         });
 
-        if (existing) return existing;
-
-        // Get or create the main artist, defaulting to Unknown Artist
-        const mainArtist = await this.upsertArtist(
-            metadata.common.artists?.[0] || 'Unknown Artist'
-        );
-
-        // Modify metadata if album is missing
-        if (!metadata.common.album) {
-            metadata.common.album = 'Unknown Album';
+        // If metadata includes artwork, save it
+        if (metadata.artwork) {
+            album.artworkUrl = await this.saveArtwork(album.id, metadata.artwork);
+            await this.albumRepo.save(album);
         }
 
-        // Get or create the album
-        const album = await this.upsertAlbum(metadata, mainArtist);
+        return album;
+    }
 
-        // Create additional artists if they exist, filtering out empty/null values
-        const artists = await Promise.all(
-            (metadata.common.artists || ['Unknown Artist'])
-                .filter(artist => artist && artist.trim().length > 0)
-                .map(artistName => this.upsertArtist(artistName))
-        );
+    async getAllArtists(since?: Date): Promise<ILibraryResponse> {
+        const query = this.artistRepo.createQueryBuilder('artist')
+            .leftJoinAndSelect('artist.albums', 'album')
+            .leftJoinAndSelect('album.tracks', 'track');
 
-        const now = new Date().toISOString();
-
-        // Check if the track already exists in the organized location
-        const organizedFilePath = this.fileService.organizeMusicFile({
-            artistName: this.fileService.makeUrlFriendly(mainArtist.name).toString(),
-            albumName: this.fileService.makeUrlFriendly(album.title).toString(),
-            trackNumber: metadata.common.track?.no || null,
-            trackName: this.fileService.makeUrlFriendly(trackTitle).toString(),
-            sourcePath: filePath
-        });
-
-        const organizedPath = await organizedFilePath;
-        const existingOrganized = await this.trackRepo.findOne({
-            where: { filePath: organizedPath }
-        });
-
-        if (existingOrganized) {
-            console.log("Skipping import: "+existingOrganized+" already exists.")
-            return existingOrganized;
+        if (since) {
+            query.where('track.dateAdded > :since', { since });
         }
-        
-        // Move the file only if it doesn't exist in the organized location
-        const newFilePath = await organizedFilePath;
-        
-        const track = await this.trackRepo.save({
-            title: trackTitle,
-            trackNumber: metadata.common.track?.no || null,
-            diskNumber: metadata.common.disk?.no || null,
-            duration: metadata.format?.duration || null,
-            filePath: newFilePath,
-            albumArtPath: album.albumArtPath,
-            genres: metadata.common.genres || [],
-            encodedBy: metadata.common.encodedby || null,
-            createdAt: now,
-            updatedAt: now,
-            album,
-            artists
-        });
 
-        // Update library metadata after saving track
-        await this.updateLibraryMetadata();
-
-        return track;
-    }
-
-    private async getLatestMetadata(): Promise<LibraryMetadata | null> {
-        return await this.metadataRepo.findOne({ 
-            where: {},
-            order: { lastScanTime: 'DESC' }
-        });
-    }
-
-    async getAllArtists(): Promise<APIResponse<ArtistResponse>> {
         const [artists, metadata] = await Promise.all([
-            this.artistRepo.find({
-                relations: {
-                    albums: {
-                        tracks: true
-                    }
-                }
-            }),
-            this.getLatestMetadata()
+            query.getMany(),
+            this.getLibraryMetadata()
         ]);
 
+        const mappedArtists = artists
+            .map(artist => ({
+                id: artist.id,
+                name: artist.name,
+                albums: artist.albums
+                    .map(album => ({
+                        id: album.id,
+                        title: album.title,
+                        year: album.year,
+                        artworkUrl: album.artworkUrl,
+                        tracks: album.tracks
+                            .filter(track => !since || track.dateAdded > since)
+                            .map(track => ({
+                                id: track.id,
+                                title: track.title,
+                                trackNumber: track.trackNumber,
+                                duration: track.duration,
+                                filePath: track.filePath,
+                                dateAdded: track.dateAdded
+                            }))
+                    }))
+                    .filter(album => album.tracks.length > 0)
+            }))
+            .filter(artist => artist.albums.length > 0);
+
         return {
-            data: artists.map(artist => this.convertToResponse(artist)),
+            artists: mappedArtists,
             metadata: {
-                lastScanned: metadata?.lastScanTime || new Date().toISOString(),
+                lastScanDate: metadata?.lastScanDate || new Date(),
                 totalTracks: metadata?.totalTracks || 0,
                 totalAlbums: metadata?.totalAlbums || 0,
                 totalArtists: metadata?.totalArtists || 0
@@ -208,109 +142,134 @@ export class MusicRepository implements IMusicRepository {
         };
     }
 
-    private convertToResponse(artist: Artist): ArtistResponse {
-        const baseUrl = process.env.HOST_URL || 'http://localhost:3001';
-
-        return {
-            id: artist.id,
-            name: artist.name,
-            bio: "",
-            artistBannerImagePath: "",
-            albums: artist.albums?.map(album => ({
-                id: album.id,
-                title: album.title,
-                releaseYear: album.year,
-                albumArtPath: album.albumArtPath || "",
-                genres: [],
-                tracks: album.tracks.map(track => ({
-                    id: track.id,
-                    position: track.trackNumber,
-                    title: track.title,
-                    duration: track.duration,
-                    filePath: `${baseUrl}/api/stream/${track.id}`,
-                    artworkFilePath: album.albumArtPath || null,
-                    format: track.codec,
-                }))
-            }))
-        };
-    }
-
-    private async updateLibraryMetadata(): Promise<void> {
-        const now = new Date().toISOString();
-        const [totalTracks, totalAlbums, totalArtists] = await Promise.all([
-            this.trackRepo.count(),
-            this.albumRepo.count(),
-            this.artistRepo.count()
-        ]);
-
-        let metadata = await this.getLatestMetadata();
-
-        if (!metadata) {
-            metadata = this.metadataRepo.create({
-                lastScanTime: now,
-            });
-        }
-
-        metadata.lastScanTime = now;
-        metadata.totalTracks = totalTracks;
-        metadata.totalAlbums = totalAlbums;
-        metadata.totalArtists = totalArtists;
-
-        await this.metadataRepo.save(metadata);
-    }
-
-    async scanLibrary(): Promise<LibraryMetadataResponse> {
-        // Get all tracks with their file paths
-        const tracks = await this.trackRepo.find();
-        let hasChanges = false;
-        
-        // Process each track
-        for (const track of tracks) {
-            try {
-                // Check if file still exists
-                const fileExists = await fs.access(track.filePath)
-                    .then(() => true)
-                    .catch(() => false);
-
-                if (!fileExists) {
-                    // If file doesn't exist, remove from database
-                    await this.trackRepo.remove(track);
-                    hasChanges = true;
-                    console.log(`Removed missing track: ${track.filePath}`);
-                }
-            } catch (error) {
-                console.error(`Failed to check track ${track.filePath}:`, error);
+    async getAllAlbums(): Promise<Album[]> {
+        return this.albumRepo.find({
+            relations: {
+                artist: true,
+                tracks: true
             }
-        }
-
-        // Only update metadata if changes were found
-        if (hasChanges) {
-            await this.updateLibraryMetadata();
-            console.log('Library metadata updated due to changes');
-        } else {
-            console.log('No changes found in library scan');
-        }
-
-        // Get latest metadata to return
-        const metadata = await this.getLatestMetadata();
-
-        if (!metadata) {
-            throw new Error('Failed to retrieve library metadata');
-        }
-
-        return {
-            lastScanned: metadata.lastScanTime,
-            totalTracks: metadata.totalTracks,
-            totalAlbums: metadata.totalAlbums, 
-            totalArtists: metadata.totalArtists,
-        };
+        });
     }
 
-    async getTrackById(trackId: string) {
-        const track = await this.trackRepo.findOne({
-            where: { id: trackId }
+    async getAllTracks(): Promise<Track[]> {
+        return this.trackRepo.find({
+            relations: {
+                artist: true,
+                album: true
+            }
         });
+    }
 
-        return track
+    async getTrackById(id: string): Promise<Track | null> {
+        return this.trackRepo.findOne({
+            where: { id },
+            relations: {
+                artist: true,
+                album: true
+            }
+        });
+    }
+
+    async saveArtist(artist: Partial<Artist>): Promise<Artist> {
+        const newArtist = this.artistRepo.create(artist);
+        return this.artistRepo.save(newArtist);
+    }
+
+    async saveAlbum(album: Partial<Album>): Promise<Album> {
+        const newAlbum = this.albumRepo.create(album);
+        return this.albumRepo.save(newAlbum);
+    }
+
+    async saveTrack(track: Partial<Track>): Promise<Track> {
+        const newTrack = this.trackRepo.create(track);
+        return this.trackRepo.save(newTrack);
+    }
+
+    async getLibraryMetadata(): Promise<LibraryMetadata | null> {
+        const metadata = await this.metadataRepo.find({
+            order: { lastScanDate: 'DESC' },
+            take: 1
+        });
+        return metadata[0] || null;
+    }
+
+    async saveLibraryMetadata(metadata: Partial<LibraryMetadata>): Promise<LibraryMetadata> {
+        const newMetadata = this.metadataRepo.create(metadata);
+        return this.metadataRepo.save(newMetadata);
+    }
+
+    // Helper method to find or create an artist
+    private async findOrCreateArtist(name: string): Promise<Artist> {
+        const existing = await this.artistRepo.findOne({ where: { name } });
+        if (existing) return existing;
+
+        return this.saveArtist({ name });
+    }
+
+    // Helper method to process a track
+    async processTrack(metadata: IMusicMetadata, filePath: string): Promise<Track> {
+        const artist = await this.findOrCreateArtist(metadata.artist);
+        const album = await this.findOrCreateAlbum(metadata, artist);
+
+        // Check if track already exists
+        const existing = await this.trackRepo.findOne({
+            where: { filePath },
+            relations: {
+                artist: true,
+                album: true
+            }
+        });
+        if (existing) return existing;
+
+        // Copy file to library and get new path
+        const newFilePath = await this.copyToLibrary(
+            filePath,
+            metadata.artist,
+            metadata.album,
+            metadata.title
+        );
+
+        // Save track with new file path
+        return this.saveTrack({
+            title: metadata.title,
+            artist,
+            album,
+            trackNumber: metadata.trackNumber,
+            duration: metadata.duration,
+            filePath: newFilePath,
+            dateAdded: new Date()
+        });
+    }
+
+    async findTrackByPath(filePath: string): Promise<Track | null> {
+        return this.trackRepo.findOne({
+            where: { filePath },
+            relations: {
+                artist: true,
+                album: true
+            }
+        });
+    }
+
+    async findArtistByName(name: string): Promise<Artist | null> {
+        return this.artistRepo.findOne({
+            where: { name },
+            relations: {
+                albums: true
+            }
+        });
+    }
+
+    async findAlbumByTitleAndArtist(title: string, artistId: string): Promise<Album | null> {
+        return this.albumRepo.findOne({
+            where: {
+                title,
+                artist: { id: artistId }
+            },
+            relations: {
+                artist: true,
+                tracks: true
+            }
+        });
     }
 } 

@@ -1,75 +1,67 @@
-import { Router, Request, Response, RequestHandler } from "express";
+import { Router, Request, Response } from 'express';
 import * as fs from 'fs';
 import { stat } from 'fs/promises';
-import { IMusicRepository } from '../interfaces/IMusicRepository';
-import { IController } from "../interfaces/IController";
+import { IMusicRepository } from '../interfaces/IMusicRepository.js';
+import { IController } from '../interfaces/IController.js';
 
 export class StreamController implements IController {
-    router: Router;
+    private router: Router;
+    public readonly path = '/stream';
 
     constructor(private musicRepository: IMusicRepository) {
         this.router = Router();
         this.initializeRoutes();
     }
 
-    initializeRoutes() {
-        const handler: RequestHandler = this.streamTrack.bind(this);
-        this.router.get('/track/:trackId', handler);
+    private initializeRoutes(): void {
+        this.router.get('/track/:trackId', async (req: Request, res: Response) => {
+            await this.streamTrack(req, res);
+        });
     }
 
-    getRouter() {
-        return this.router;
-    }
-
-    async streamTrack(req: Request, res: Response) {
+    private async streamTrack(req: Request, res: Response): Promise<void> {
         try {
-            const track = await this.musicRepository.getTrackById(req.params.trackId);
+            const trackId = req.params.trackId;
+            const track = await this.musicRepository.getTrackById(trackId);
+            
             if (!track) {
                 res.status(404).json({ error: 'Track not found' });
                 return;
             }
 
             const filePath = track.filePath;
-            const fileStat = await stat(filePath);
-
-            // Handle range requests (important for seeking)
+            const stats = await stat(filePath);
+            
             const range = req.headers.range;
             if (range) {
                 const parts = range.replace(/bytes=/, "").split("-");
-                const start = parseInt(parts[0]);
-                const end = parts[1] ? parseInt(parts[1]) : fileStat.size - 1;
-                const chunkSize = (end - start) + 1;
-
-                const contentType = this.getContentType(filePath);
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+                const chunksize = (end - start) + 1;
+                const stream = fs.createReadStream(filePath, { start, end });
+                
                 res.writeHead(206, {
-                    'Content-Range': `bytes ${start}-${end}/${fileStat.size}`,
+                    'Content-Range': `bytes ${start}-${end}/${stats.size}`,
                     'Accept-Ranges': 'bytes',
-                    'Content-Length': chunkSize,
-                    'Content-Type': contentType
+                    'Content-Length': chunksize,
+                    'Content-Type': 'audio/mpeg',
                 });
-
-                fs.createReadStream(filePath, { start, end }).pipe(res);
+                
+                stream.pipe(res);
             } else {
                 res.writeHead(200, {
-                    'Content-Length': fileStat.size,
-                    'Content-Type': 'audio/mp4'
+                    'Content-Length': stats.size,
+                    'Content-Type': 'audio/mpeg',
                 });
                 fs.createReadStream(filePath).pipe(res);
             }
         } catch (error) {
-            console.error('Streaming error:', error);
-            res.status(500).json({ error: 'Failed to stream track' });
+            console.error('Error streaming track:', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
     }
 
-    private getContentType(filePath: string): string {
-        const ext = filePath.split('.').pop()?.toLowerCase();
-        switch (ext) {
-            case 'mp3': return 'audio/mpeg';
-            case 'm4a': return 'audio/mp4';
-            case 'wav': return 'audio/wav';
-            case 'ogg': return 'audio/ogg';
-            default: return 'audio/mpeg'; // fallback
-        }
+    public getRouter(): Router {
+        return this.router;
     }
 } 

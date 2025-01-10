@@ -1,32 +1,25 @@
-import { Router, Request, Response, RequestHandler } from "express";
-import { IController } from "../interfaces/IController";
-
+import { Router, Request, Response } from 'express';
+import { IController } from '../interfaces/IController.js';
 
 export class SystemController implements IController {
-    router: Router;
+    private router: Router;
+    public readonly path = '/system';
 
     constructor() {
         this.router = Router();
         this.initializeRoutes();
     }
 
-    initializeRoutes() {
-        const handler: RequestHandler = this.getSystemInfo.bind(this);
-        this.router.get('/info', handler);
+    private initializeRoutes(): void {
+        this.router.get('/health', async (_req: Request, res: Response) => {
+            res.json({
+                status: 'healthy',
+                timestamp: new Date().toISOString()
+            });
+        });
     }
 
-    getRouter() {
+    public getRouter(): Router {
         return this.router;
     }
-
-    async getSystemInfo(req: Request, res: Response) {
-        try {
-            const host = `${req.protocol}://${req.get('host')}`;
-            res.json({ url: host });
-        } catch (error) {
-            console.error('Failed to get system info:', error);
-            res.status(500).json({ error: 'Failed to get system info' });
-        }
-    }
-
 }

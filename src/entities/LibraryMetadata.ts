@@ -2,24 +2,22 @@ import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity()
 export class LibraryMetadata {
-    @PrimaryGeneratedColumn()
+    @PrimaryGeneratedColumn("uuid")
     id!: string;
 
-    @Column({ type: 'text' })
-    lastScanTime!: string;
+    @Column({ type: "datetime" })
+    lastScanDate!: Date;
 
-    @Column({ type: 'int' })
+    @Column({ type: "int" })
     totalTracks!: number;
 
-    @Column({ type: 'int' })
-    totalArtists!: number;
-
-    @Column({ type: 'int' })
+    @Column({ type: "int" })
     totalAlbums!: number;
 
-    @Column({ type: 'float', nullable: true })
-    totalDuration?: number;
+    @Column({ type: "int" })
+    totalArtists!: number;
 
-    @Column({ type: 'float', nullable: true })
-    totalSize?: number;
+    constructor(partial: Partial<LibraryMetadata> = {}) {
+        Object.assign(this, partial);
+    }
 } 

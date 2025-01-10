@@ -1,10 +1,4 @@
 import "reflect-metadata";
-import express, { Request, Response } from 'express';
-import bodyParser from 'body-parser';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import { StreamController } from "./controllers/StreamController.js"
 import { DataSource } from "typeorm";
 import { Artist } from "./entities/Artist.js";
 import { Album } from "./entities/Album.js";
@@ -16,47 +10,66 @@ import { SystemController } from "./controllers/SystemController.js";
 import { MusicMetadataReader } from "./services/MusicMetadataReader.js";
 import { MusicLibraryService } from "./services/MusicLibraryService.js";
 import { LibraryController } from "./controllers/LibraryController.js";
+import { StreamController } from "./controllers/StreamController.js";
+import { App } from "./App.js";
+import { IAppConfig } from "./interfaces/IAppConfig.js";
+import { IController } from "./interfaces/IController.js";
 
-export const AppDataSource = new DataSource({ 
-  type: "sqlite",
-  database: "database.sqlite",
-  entities: [Artist, Album, Track, LibraryMetadata],
-  synchronize: true,
-  dropSchema: false,
-  logging: false
-});
+// Application configuration
+const config: IAppConfig = {
+    port: 3001,
+    apiKey: process.env.API_KEY || 'a451c59f-2485-485b-851e-ba6d5aa8e01d',
+    database: {
+        type: "sqlite",
+        path: "database.sqlite",
+        logging: false,
+        synchronize: true,
+        dropSchema: true
+    }
+};
 
-await AppDataSource.initialize();
+// Database factory function
+const createDataSource = async (config: IAppConfig): Promise<DataSource> => {
+    const dataSource = new DataSource({
+        type: "sqlite",
+        database: config.database.path,
+        entities: [Artist, Album, Track, LibraryMetadata],
+        synchronize: config.database.synchronize,
+        dropSchema: config.database.dropSchema,
+        logging: config.database.logging
+    });
+    
+    await dataSource.initialize();
+    return dataSource;
+};
 
-// defining the Express app
-const app = express();
+// Service initialization
 const fileService = new FileService();
-const musicRepository = new MusicRepository(AppDataSource, fileService);
 const metadataReader = new MusicMetadataReader();
-const libraryService = new MusicLibraryService(fileService, metadataReader, musicRepository);
 
-const streamController = new StreamController(musicRepository);
-const systemController = new SystemController();
-const libraryController = new LibraryController(libraryService,musicRepository,AppDataSource,metadataReader)
+const initializeApp = async () => {
+    const dataSource = await createDataSource(config);
+    const musicRepository = new MusicRepository(dataSource, fileService);
+    const libraryService = new MusicLibraryService(fileService, metadataReader, musicRepository);
 
-// adding Helmet to enhance your Rest API's security
-app.use(helmet());
+    // Controller initialization
+    const controllers: IController[] = [
+        new StreamController(musicRepository),
+        new SystemController(),
+        new LibraryController(libraryService, musicRepository, dataSource, metadataReader)
+    ];
 
-// using bodyParser to parse JSON bodies into JS objects
-app.use(bodyParser.json());
+    // Initialize and start the application
+    const app = new App(config, controllers, createDataSource);
+    await app.initialize();
 
-// enabling CORS for all requests
-app.use(cors());
+    // Import any new music files
+    await libraryService.importNewMusic();
+    
+    app.start();
+};
 
-// adding morgan to log HTTP requests
-app.use(morgan('combined'));
-
-// defining an endpoint to return all ads
-app.use('/api/library', libraryController.getRouter())
-app.use('/api/system', systemController.getRouter())
-app.use('/api/stream', streamController.getRouter())
-
-// starting the server
-app.listen(3001, () => {
-  console.log('listening on port 3001');
+initializeApp().catch(error => {
+    console.error('Failed to start the application:', error);
+    process.exit(1);
 });
