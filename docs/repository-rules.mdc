@@ -1,0 +1,179 @@
+# Repository Rules
+
+## Core Repository Principles
+- Repositories should abstract database interactions → Prevent direct database queries in services.
+- Use Prisma → Keep database logic separate from business logic.
+- Return plain JavaScript objects → Avoid exposing ORM models outside of the repository.
+- Ensure repositories are testable → Inject the database client as a dependency.
+
+## GitFlow Branch Strategy
+
+### Branch Structure
+```
+main (production)
+├── develop (main development branch)
+│   ├── feature/* (new features)
+│   ├── bugfix/* (bug fixes)
+│   └── refactor/* (code refactoring)
+├── release/* (release preparation)
+└── hotfix/* (production fixes)
+```
+
+### Branch Naming Conventions
+- Feature branches: `feature/issue-{number}-{short-description}`
+- Bug fixes: `bugfix/issue-{number}-{short-description}`
+- Refactoring: `refactor/issue-{number}-{short-description}`
+- Releases: `release/v{major}.{minor}.{patch}`
+- Hotfixes: `hotfix/v{major}.{minor}.{patch}-{description}`
+
+### Branch Workflows
+
+#### Feature Development
+```
+1. Create from: develop
+2. Branch name: feature/issue-{number}-{description}
+3. Merge back into: develop
+4. Naming example: feature/issue-123-add-playlist-repository
+```
+
+#### Bug Fixes
+```
+1. Create from: develop
+2. Branch name: bugfix/issue-{number}-{description}
+3. Merge back into: develop
+4. Naming example: bugfix/issue-124-fix-user-query
+```
+
+#### Releases
+```
+1. Create from: develop
+2. Branch name: release/v{version}
+3. Merge back into: main AND develop
+4. Naming example: release/v1.2.0
+```
+
+#### Hotfixes
+```
+1. Create from: main
+2. Branch name: hotfix/v{version}-{description}
+3. Merge back into: main AND develop
+4. Naming example: hotfix/v1.2.1-fix-auth
+```
+
+## Repository Implementation
+
+### File Structure
+```
+src/
+├── repositories/
+│   ├── base.repository.ts
+│   ├── user.repository.ts
+│   ├── artist.repository.ts
+│   ├── album.repository.ts
+│   ├── track.repository.ts
+│   └── playlist.repository.ts
+```
+
+### Base Repository Pattern
+```typescript
+export abstract class BaseRepository<T> {
+  constructor(protected prisma: PrismaClient) {}
+
+  abstract getById(id: string): Promise<T | null>;
+  abstract create(data: Omit<T, 'id'>): Promise<T>;
+  abstract update(id: string, data: Partial<T>): Promise<T>;
+  abstract delete(id: string): Promise<void>;
+}
+```
+
+### Repository Testing
+1. Test Structure
+   ```
+   src/
+   ├── repositories/
+   │   ├── __tests__/
+   │   │   ├── user.repository.test.ts
+   │   │   └── ...
+   │   ├── user.repository.ts
+   │   └── ...
+   ```
+
+2. Test Requirements
+   - Unit tests for all repository methods
+   - Integration tests with test database
+   - Mock Prisma client in unit tests
+   - Test error conditions
+   - Test data validation
+
+## Version Control
+
+### Commit Guidelines
+- Use conventional commit messages
+- Reference issue numbers
+- Include brief description of changes
+
+Example:
+```
+feat(repository): implement user repository (#123)
+
+- Add CRUD operations for users
+- Implement Prisma client injection
+- Add unit tests for all methods
+```
+
+### Pull Request Rules
+1. Branch Protection
+   - Require pull request reviews
+   - Require status checks to pass
+   - Require branch to be up to date
+
+2. PR Template
+   ```markdown
+   ## Description
+   [Description of changes]
+
+   ## Issue
+   Fixes #[issue-number]
+
+   ## Type of Change
+   - [ ] New feature (non-breaking change)
+   - [ ] Bug fix (non-breaking change)
+   - [ ] Breaking change
+   - [ ] Refactor
+   - [ ] Documentation update
+
+   ## Testing
+   - [ ] Unit tests added/updated
+   - [ ] Integration tests added/updated
+   - [ ] Manual testing performed
+
+   ## Checklist
+   - [ ] Code follows repository guidelines
+   - [ ] Tests pass locally
+   - [ ] Documentation updated
+   - [ ] No new warnings generated
+   ```
+
+### Version Control
+1. Semantic Versioning
+   - MAJOR version for incompatible API changes
+   - MINOR version for new functionality
+   - PATCH version for bug fixes
+
+2. Release Tags
+   - Tag all releases in main branch
+   - Use annotated tags with release notes
+   - Follow semver format: v1.2.3
+
+## CI/CD Integration
+1. Branch Policies
+   - Automated tests must pass
+   - Code review required
+   - No direct commits to main/develop
+
+2. Automated Checks
+   - Linting
+   - Type checking
+   - Unit tests
+   - Integration tests
+   - Build verification
