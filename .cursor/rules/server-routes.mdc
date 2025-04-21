@@ -1,0 +1,18 @@
+---
+description: Rules for defining routes in a server application
+globs: server/routes/**/*.tsx
+alwaysApply: false
+---
+# Routes
+Keep route definitions separate → Define routes in routes/ and import them into app.ts.
+
+The application should implement an API versioning system to more gracefully handle breaking changes. The /routes directory should have subdirectories for each API version (v1, v2) etc.
+
+No other directories should implement this structure. 
+
+├── /routes       # Route handlers
+│   ├── /v1       # API Version 1
+│   │   ├── auth.routes.ts
+│   │   ├── users.routes.ts
+│   ├── /v2       # API Version 2 (if needed)
+│   │   ├── users.routes.ts

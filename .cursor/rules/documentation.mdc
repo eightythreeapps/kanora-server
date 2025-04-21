@@ -1,0 +1,10 @@
+---
+description: Defines how to document the project and provides rules for creating documentation
+globs: 
+alwaysApply: false
+---
+### Documentation:
+- Use JSDoc comments for all public functions and interfaces
+- Keep README files up-to-date with setup instructions, usage examples, and contribution guidelines
+- Create documentation for all API endpoints in OpenAPI format
+- Include examples in complex function documentation

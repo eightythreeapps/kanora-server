@@ -1,0 +1,28 @@
+---
+description: 
+globs: src/server/services/**/*.ts
+alwaysApply: false
+---
+# ServiceServices (Business Logic Layer)
+- Services should contain business rules and orchestrate operations. They should NOT interact with HTTP requests or responses.
+- Keep services independent of Express → This makes them easier to test.
+- Use dependency injection → Pass repositories or external dependencies via constructors.
+- Ensure services are stateless → No instance variables storing request-specific data.
+
+Example User Service (src/application/services/UserService.ts)
+
+```
+import { UserRepository } from "../../infrastructure/repositories/UserRepository";
+
+export class UserService {
+  private userRepository: UserRepository;
+
+  constructor(userRepository: UserRepository) {
+    this.userRepository = userRepository;
+  }
+
+  async getUserById(userId: string) {
+    return this.userRepository.findById(userId);
+  }
+}
+```

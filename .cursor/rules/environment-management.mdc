@@ -1,0 +1,183 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+ # Environment Management Best Practices
+
+> Secure and consistent management of environment variables across different deployment contexts. Keep sensitive data out of source code and maintain separate configurations for different environments.
+
+---
+
+## 🔐 Core Principles
+
+- ✅ **Never commit sensitive data to version control**
+- ✅ **Maintain separate .env files for different environments**
+- ✅ **Document all environment variables**
+- ✅ **Use strong naming conventions**
+- ✅ **Validate environment variables at startup**
+
+---
+
+## 📁 Environment File Structure
+
+```
+project-root/
+├── .env                  # Local development (git ignored)
+├── .env.example          # Template with dummy values (committed)
+├── .env.test            # Test environment config (committed)
+├── .env.development     # Development environment defaults
+├── .env.staging        # Staging environment defaults
+└── .env.production     # Production environment defaults
+```
+
+---
+
+## 🏷️ Variable Naming Conventions
+
+Use SCREAMING_SNAKE_CASE and logical prefixes:
+
+```bash
+# Server
+SERVER_PORT=3000
+SERVER_HOST=localhost
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=myapp
+DB_USER=admin
+DB_PASSWORD=secret
+
+# Authentication
+AUTH_JWT_SECRET=secret
+AUTH_JWT_EXPIRES=24h
+
+# External Services
+AWS_ACCESS_KEY=key
+AWS_SECRET_KEY=secret
+```
+
+---
+
+## 📦 Environment Loading
+
+Use a centralized config loader:
+
+```typescript
+// config/env.ts
+import { config } from 'dotenv';
+import { z } from 'zod';
+import { resolve } from 'path';
+
+// Load environment-specific variables
+const envPath = resolve(__dirname, `../../.env.${process.env.NODE_ENV || 'development'}`);
+config({ path: envPath });
+
+// Define environment schema
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'staging', 'production']),
+  PORT: z.string().transform(Number),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+  // ... other variables
+});
+
+// Validate and export typed config
+export const env = envSchema.parse(process.env);
+```
+
+---
+
+## 🔒 Security Best Practices
+
+1. **Secret Management**
+   - Use a secrets manager in production (AWS Secrets Manager, HashiCorp Vault)
+   - Rotate secrets regularly
+   - Use different secrets for each environment
+
+2. **Access Control**
+   - Restrict access to production environment files
+   - Use role-based access for cloud secrets
+   - Log access to sensitive configurations
+
+3. **Encryption**
+   - Encrypt sensitive values in transit and at rest
+   - Use strong encryption keys
+   - Regular key rotation
+
+---
+
+## 🧪 Testing Considerations
+
+1. **Test Environment**
+   ```bash
+   # .env.test
+   NODE_ENV=test
+   PORT=3001
+   DATABASE_URL=sqlite:./test.db
+   JWT_SECRET=test-secret-not-used-in-production
+   ```
+
+2. **CI/CD Pipeline**
+   - Set test environment variables in CI configuration
+   - Never expose production secrets in CI logs
+   - Use dedicated test databases
+
+---
+
+## 📝 Documentation Requirements
+
+1. **Environment Template**
+   ```bash
+   # .env.example
+   NODE_ENV=development
+   PORT=3000
+   DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+   # Add comments explaining each variable
+   ```
+
+2. **Required vs Optional Variables**
+   - Mark required variables in documentation
+   - Provide default values for optional ones
+   - Document valid value ranges/formats
+
+---
+
+## 🚫 Common Pitfalls to Avoid
+
+1. ❌ Committing `.env` files to git
+2. ❌ Using production secrets in development
+3. ❌ Hardcoding environment-specific values
+4. ❌ Sharing secrets via unsecured channels
+5. ❌ Not validating environment variables
+
+---
+
+## ✅ Environment Checklist
+
+| Environment | Purpose | Version Control | Secrets |
+|-------------|---------|-----------------|---------|
+| Development | Local development | No (.env) | Dummy data |
+| Test | Automated testing | Yes (.env.test) | Test data |
+| Staging | Pre-production testing | No | Rotated regularly |
+| Production | Live application | No | Strictly controlled |
+
+---
+
+## 🔄 Deployment Process
+
+1. **Local Development**
+   - Copy `.env.example` to `.env`
+   - Set local development values
+   - Never commit `.env`
+
+2. **CI/CD Pipeline**
+   - Use `.env.test` for automated tests
+   - Inject secrets from secure storage
+   - Validate environment before deployment
+
+3. **Production Deployment**
+   - Load secrets from secure storage
+   - Validate all required variables
+   - Log configuration status (not values) 
