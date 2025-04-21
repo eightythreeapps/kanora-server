@@ -7,31 +7,35 @@ assignees: ''
 ---
 
 ## Bug Description
-[A clear and concise description of what the bug is]
+A clear and concise description of what the bug is.
 
 ## Steps To Reproduce
-1. [First Step]
-2. [Second Step]
-3. [and so on...]
+Steps to reproduce the behavior:
+1. Call endpoint '...'
+2. With payload '....'
+3. See error
 
 ## Expected behavior
-[What you expected to happen]
+A clear and concise description of what you expected to happen.
 
 ## Actual behavior
-[What actually happened]
+What actually happened, including any error messages or unexpected responses.
+
+## Logs
+If applicable, add logs or error messages.
 
 ## Screenshots
-[If applicable, add screenshots to help explain your problem]
+If applicable, add screenshots to help explain your problem.
 
 ## Environment
-- Node version:
-- NPM version:
-- OS:
-- Browser (if applicable):
-- Database version:
+- OS: [e.g. Ubuntu 20.04]
+- Node Version: [e.g. 18.15.0]
+- NPM Version: [e.g. 9.5.0]
+- Database Version: [e.g. PostgreSQL 14]
+- Browser (if applicable): [e.g. Chrome 91.0]
 
 ## Additional context
-[Add any other context about the problem here]
+Add any other context about the problem here.
 
 ## Possible Solution
-[If you have suggestions on how to fix the bug]
+If you have suggestions on how to fix the bug, please describe them here.
