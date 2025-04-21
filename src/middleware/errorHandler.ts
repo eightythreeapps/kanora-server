@@ -1,35 +1,52 @@
 import { Request, Response, NextFunction } from 'express';
-
-export class AppError extends Error {
-  constructor(
-    public message: string,
-    public statusCode: number = 500,
-    public isOperational: boolean = true
-  ) {
-    super(message);
-    Error.captureStackTrace(this, this.constructor);
-  }
-}
+import { AppError } from '../utils/errors';
+import logger from '../utils/logger';
 
 export const errorHandler = (
-  err: Error | AppError,
-  _req: Request,
+  err: Error,
+  req: Request,
   res: Response,
-  _next: NextFunction
-): void => {
+  next: NextFunction
+) => {
+  logger.error('Error:', {
+    name: err.name,
+    message: err.message,
+    stack: err.stack,
+  });
+
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({
-      success: false,
-      error: err.message,
+    return res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
-    return;
   }
 
-  // Log unexpected errors
-  console.error('Unexpected error:', err);
+  // Handle Prisma errors
+  if (err.name === 'PrismaClientKnownRequestError') {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Database operation failed',
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    });
+  }
 
-  res.status(500).json({
-    success: false,
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+  // Handle validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      status: 'error',
+      message: err.message,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    });
+  }
+
+  // Default error
+  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  return res.status(statusCode).json({
+    status: 'error',
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 }; 

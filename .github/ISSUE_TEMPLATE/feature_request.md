@@ -1,28 +1,31 @@
 ---
-name: Feature request
+name: Feature Request
 about: Suggest an idea for this project
 title: '[FEATURE] '
-labels: enhancement
+labels: feature
 assignees: ''
 ---
 
 ## Problem Statement
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
 
-## Proposed Solution
-A clear and concise description of what you want to happen.
+## Use Case
+Describe the use case or scenario where this feature would be valuable.
 
-## Alternative Solutions
-A clear and concise description of any alternative solutions or features you've considered.
+## Current Solution/Workaround
+Is there a current solution or workaround? If so, please describe.
+
+## Proposed Solution
+A clear and concise description of what you want to happen and how it should work.
 
 ## User Story
 As a [type of user], I want [goal] so that [benefit].
 
 ## Acceptance Criteria
 List the conditions that must be met for this feature to be considered complete:
-- [ ] Criteria 1
-- [ ] Criteria 2
-- [ ] Criteria 3
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
 
 ## Technical Requirements
 List any technical requirements or implementation details:
@@ -32,9 +35,17 @@ List any technical requirements or implementation details:
 - Performance requirements
 
 ## Dependencies
-List any dependencies or blockers:
+List any dependencies or prerequisites for implementing this feature:
 - [ ] Dependency 1
 - [ ] Dependency 2
 
+## Impact Analysis
+Describe the potential impact of this feature on:
+- [ ] Performance
+- [ ] Security
+- [ ] User Experience
+- [ ] Existing Features
+- [ ] Documentation
+
 ## Additional Context
-Add any other context, mockups, or screenshots about the feature request here.
+Add any other context, mockups, screenshots, or examples about the feature request here.
