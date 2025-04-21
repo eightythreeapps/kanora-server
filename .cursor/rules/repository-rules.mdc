@@ -1,0 +1,11 @@
+---
+description: Rules on how to implement repositories in the application 
+globs: server/repositories/**/*.ts
+alwaysApply: false
+---
+# Repositories
+- Repositories should abstract database interactions → Prevent direct database queries in services.
+- Use Prisma → Keep database logic separate from business logic.
+- Return plain JavaScript objects → Avoid exposing ORM models outside of the repository.
+- Ensure repositories are testable → Inject the database client as a dependency.
+

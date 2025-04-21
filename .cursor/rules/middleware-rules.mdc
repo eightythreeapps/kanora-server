@@ -1,0 +1,54 @@
+---
+description: Rules for implementing Middleware in the server application
+globs: server/middleware/**/*.ts
+alwaysApply: false
+---
+# Middleware
+Middleware should be organised logically and files should encapsulate all logic for their domain.  
+
+## Authentication 
+- Ensure authentication before accessing protected routes.
+- Use JWT, OAuth, or session-based authentication.
+- Attach user information to the request object if authentication is successful.
+
+```
+import { Request, Response, NextFunction } from "express";
+
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error(err);
+  res.status(err.status || 500).json({ error: err.message || "Internal Server Error" });
+};
+```
+
+## Logging
+- Log all incoming requests and responses → Use Winston, Pino, or Morgan.
+- Include timestamp, method, URL, status code, and execution time.
+
+### Example Logger middleware
+```
+import { Request, Response, NextFunction } from "express";
+import pino from "pino";
+
+const logger = pino({ level: "info" });
+
+export const loggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  logger.info(`${req.method} ${req.url} - ${new Date().toISOString()}`);
+  next();
+};
+```
+
+## Error Handling
+- Centralize error handling → Avoid try/catch in every controller.
+- Log errors and return structured responses.
+- Use custom error classes for better error categorization.
+
+### Example error handler middleware
+```
+import { Request, Response, NextFunction } from "express";
+
+export const errorHandler = (err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error(err);
+  res.status(err.status || 500).json({ success: false, message: err.message || "Internal Server Error" });
+};
+```
+

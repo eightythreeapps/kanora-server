@@ -1,0 +1,73 @@
+---
+description: Rules on how to define, interact and abstract database logic
+globs: server/prisma/**/*.ts
+alwaysApply: false
+---
+## Database architecture 
+The database for the project should be SQLLIte based and should be accessed via Prisma. Database logic should be encapsulated in repositories to keep controllers clean. This will also make them easy to reuse across services.
+
+### Prisma directory structure
+The directory structure should follow the structure from [server-app-architecture.mdc](mdc:.cursor/rules/server-app-architecture.mdc) but add a new directory for Prisma code.
+
+project-root/
+├── server/
+│   ├── prisma/                # Prisma schema and migrations
+│   │   ├── schema.prisma      # Prisma schema definition
+│   │   ├── migrations/        # Migration history
+│   ├── config/                # Environment configs
+│   │   ├── env.ts             # Config loader
+│   ├── controllers/           # Route handlers (no business logic)
+│   ├── services/              # Business logic (calls repositories)
+│   ├── repositories/          # Direct DB interactions (using Prisma)
+│   ├── routes/                # API routes
+│   ├── middlewares/           # Express middlewares
+│   ├── utils/                 # Utility functions/helpers
+│   ├── app.ts                 # Express app setup
+│   ├── server.ts              # Server entry point
+
+### Prisma Coding Standards
+- Use UUIDs instead of auto-incremented IDs (@default(uuid())).
+- Timestamps: createdAt and updatedAt should be used for tracking.
+- Use environment variables for DATABASE_URL in .env.
+- Avoid creating multiple Prisma clients by using a singleton pattern.
+- Prisma queries should ONLY be used in repositories, NEVER in controllers. Refer to [server-app-architecture.mdc](mdc:.cursor/rules/server-app-architecture.mdc) for rules on the general application architecture. 
+
+
+
+#### Example Prisma Singleton
+```
+import { PrismaClient } from "@prisma/client";
+
+const prismaClientSingleton = () => {
+  return new PrismaClient();
+};
+
+// Prevent multiple instances in development (fixes Next.js HMR issue)
+declare global {
+  var prisma: PrismaClient | undefined;
+}
+
+export const prisma = global.prisma || prismaClientSingleton();
+
+if (process.env.NODE_ENV !== "production") {
+  global.prisma = prisma;
+}
+```
+
+#### Example of Prisma usage in a repository
+```
+import { prisma } from "../config/prisma";
+import { User } from "@prisma/client";
+
+export const getUserByEmail = async (email: string): Promise<User | null> => {
+  return prisma.user.findUnique({ where: { email } });
+};
+
+export const createUser = async (email: string, password: string): Promise<User> => {
+  return prisma.user.create({ data: { email, password } });
+};
+```
+
+
+
+

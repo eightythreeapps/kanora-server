@@ -1,0 +1,15 @@
+---
+description: Rules that define how to implement Prisma
+globs: 
+alwaysApply: false
+---
+# Prisma ORM Rules
+
+- Use UUIDs instead of auto-incremented IDs (@default(uuid())).
+- Timestamps: createdAt and updatedAt should be used for tracking.
+- Use environment variables for DATABASE_URL in .env.
+- To avoid creating multiple Prisma clients, use a singleton pattern.
+- Encapsulate DB logic in repositories. Prisma queries should ALWAYS be in repositories NOT in controllers. This makes it easier to reuse them across services.
+- Use Seed data (prisma/seed.js) for test and dev environments if required. 
+- When updating multiple records, use transactions to ensure consistency.
+- Fetch only required fields for efficiency.
