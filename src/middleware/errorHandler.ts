@@ -1,52 +1,64 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/errors';
+import { ValidationError as ExpressValidationError, Result } from 'express-validator';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { AppError, ValidationError, ValidationErrorDetail } from '../utils/errors';
 import logger from '../utils/logger';
 
 export const errorHandler = (
-  err: Error,
+  err: Error | Result<ValidationErrorDetail>,
   req: Request,
   res: Response,
-  next: NextFunction
-) => {
-  logger.error('Error:', {
-    name: err.name,
-    message: err.message,
-    stack: err.stack,
-  });
-
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      status: 'error',
+  _next: NextFunction
+): void => {
+  // Log error details based on type
+  if (err instanceof Error) {
+    logger.error('Error:', {
+      name: err.name,
       message: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+      stack: err.stack,
     });
+  } else {
+    logger.error('Validation Error:', {
+      errors: err.array(),
+    });
+  }
+
+  // Handle validation errors from express-validator
+  if (Array.isArray(err)) {
+    const validationErrors: ValidationErrorDetail[] = err.map(error => ({
+      type: error.type,
+      msg: error.msg,
+      param: error.param,
+      location: error.location,
+    }));
+
+    const validationError = new ValidationError('Validation failed', validationErrors);
+    res.status(400).json(validationError.toJSON());
+    return;
   }
 
   // Handle Prisma errors
-  if (err.name === 'PrismaClientKnownRequestError') {
-    return res.status(400).json({
-      status: 'error',
-      message: 'Database operation failed',
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+  if (err instanceof PrismaClientKnownRequestError) {
+    const statusCode = 400;
+    const appError = new AppError(err.message, statusCode, {
+      code: err.code,
+      meta: err.meta,
     });
+    res.status(statusCode).json(appError.toJSON());
+    return;
   }
 
-  // Handle validation errors
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      status: 'error',
-      message: err.message,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    });
+  // Handle custom AppError instances
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json(err.toJSON());
+    return;
   }
 
-  // Default error
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
-  return res.status(statusCode).json({
-    status: 'error',
-    message: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : err.message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  // Handle unknown errors
+  const internalError = new AppError(
+    'Internal server error',
+    500,
+    process.env.NODE_ENV === 'development' ? { stack: err instanceof Error ? err.stack : undefined } : undefined
+  );
+  res.status(500).json(internalError.toJSON());
 }; 
