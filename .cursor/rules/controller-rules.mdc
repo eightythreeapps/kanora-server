@@ -1,0 +1,41 @@
+---
+description: Rules on how to implement controllers in the server application
+globs: server/controllers/**/*.ts
+alwaysApply: false
+---
+# Controllers
+
+- Controllers should be thin → Only handle request validation, response formatting, and calling the appropriate service.
+- Do not include business logic in controllers → Delegate logic to services.
+- Validate incoming requests → Use middleware or validation libraries like Joi or Zod.
+- Use proper HTTP status codes in your responses → 200 OK, 201 Created, 400 Bad Request, etc.
+- Return consistent API responses → Use a standard response format { success: boolean, data: any, message?: string }. This will help when building client libraries that consume the API.
+- Handle exceptions properly → Pass errors to centralized error-handling middleware.
+
+
+# Restful API
+- The API should be versioned.
+- The API should be RESTful.
+- The API should be designed with the client in mind.
+- The API should be designed with scalability in mind.
+- The API should be designed with security in mind.
+- Standard HTTP status codes should be used.
+- The API should be designed with error handling in mind
+- API documentation should be provided in OpenAPI format.
+
+##### Example controller
+
+```
+import { Request, Response } from "express";
+import { registerUser } from "../services/userService";
+
+export const register = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    const user = await registerUser(email, password);
+    res.status(201).json({ user });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+```

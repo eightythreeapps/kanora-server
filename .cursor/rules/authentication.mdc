@@ -1,0 +1,119 @@
+---
+description: Rules for implementing authentication thorughout the application
+globs: **/*.ts, **/*.tsx
+alwaysApply: false
+---
+# Authentication
+
+## General authentication rules
+- Use JWT tokens for authentication. The server issues access and refresh tokens upon login.
+- Store access tokens securely. The client should not store JWTs in localStorage. Instead, use HttpOnly cookies or memory (Zustand).
+- Refresh tokens should be stored in HttpOnly cookies to prevent XSS attacks.
+- Tokens must have an expiration time. Short lifespan for access tokens (e.g., 15 min), longer for refresh tokens (e.g., 7 days).
+- Use HTTPS – Always enforce TLS/SSL to protect token transmission.
+
+
+## Client authentication rules
+
+- Use Axios interceptors to attach the access token to API requests.
+- Automatically refresh access tokens when they expire using the refresh token.
+- Handle token expiration properly – If both tokens expire, force logout and redirect to login.
+- Use Zustand to manage authentication state across the app.
+
+### Example: Axios Interceptor for Attaching JWTs
+```
+import axios from "axios";
+
+const axiosClient = axios.create({
+  baseURL: process.env.REACT_APP_API_URL,
+  withCredentials: true, // Allows sending cookies
+});
+
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("accessToken"); // Store in memory if possible
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export default axiosClient;
+```
+
+## Server authentication rules
+- Use bcrypt to hash passwords before storing them – Never store plain-text passwords.
+- Issue JWT access & refresh tokens upon login – Access tokens should be short-lived.
+- Validate tokens using middleware – Protect routes using an authMiddleware.
+- Revoke refresh tokens on logout – Either store them in a database or invalidate them via a token blacklist.
+- Use Zod or Joi for input validation – Prevent malformed requests.
+
+### Example: Authentication Middleware in Express
+```
+import jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+
+const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET!, (err, user) => {
+    if (err) return res.status(403).json({ message: "Forbidden" });
+    (req as any).user = user;
+    next();
+  });
+};
+
+export default authenticateJWT;
+```
+
+
+## Refresh token handling
+
+- Use a /refresh endpoint to issue new access tokens if the current one is expired.
+- Store refresh tokens in an HttpOnly cookie (not in localStorage).
+- Invalidate refresh tokens when logging out by removing them from the database.
+
+### Example: Refresh Token Endpoint
+```
+import express from "express";
+import jwt from "jsonwebtoken";
+
+const router = express.Router();
+
+router.post("/refresh", (req, res) => {
+  const refreshToken = req.cookies.refreshToken;
+  if (!refreshToken) return res.status(401).json({ message: "Unauthorized" });
+
+  jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET!, (err, user) => {
+    if (err) return res.status(403).json({ message: "Forbidden" });
+
+    const newAccessToken = jwt.sign({ id: user.id }, process.env.ACCESS_TOKEN_SECRET!, { expiresIn: "15m" });
+    res.json({ accessToken: newAccessToken });
+  });
+});
+
+export default router;
+```
+
+## Logout handling
+- Revoke refresh tokens on logout – Delete it from the database or remove it from cookies.
+- Clear tokens from client state – Ensure React state is updated after logout.
+
+### Example: Logout Endpoint
+```
+import express from "express";
+
+const router = express.Router();
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("refreshToken", { httpOnly: true, secure: true, sameSite: "strict" });
+  return res.json({ message: "Logged out successfully" });
+});
+
+export default router;
+```

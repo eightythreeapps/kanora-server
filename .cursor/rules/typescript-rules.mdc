@@ -1,0 +1,35 @@
+---
+description: Enforce TypeScript coding standards
+globs: 
+alwaysApply: false
+---
+# TypeScript Coding Standards
+
+- Use strict typing for all variables and functions.
+- Prefer `interface` over `type` for defining object shapes.
+- Avoid using the `any` type; instead, use more specific types or generics.
+- Ensure all promises are handled with `async/await`.
+- Follow the project's ESLint configurations for code formatting.
+
+### File Organization:
+- Group related functionality into modules
+- Use index files to simplify imports
+- Separate concerns: keep business logic, UI components, and utilities in different directories
+
+
+### Best Practices:
+- Prefer `const` over `let` when variables won't be reassigned
+- Use arrow functions for better lexical scoping and concise syntax
+- Utilize TypeScript's type system fully: use interfaces, type aliases, and generics where appropriate
+- Write pure functions where possible to improve testability and reduce side effects
+- Follow the Single Responsibility Principle
+- Follow DRY. Grep the codebase for any logic that can be reused.
+- Use dependency injection to improve testability and flexibility
+- Prefer composition over inheritance
+- Implement proper error handling and logging
+- Implement error handling with custom error types
+- Write comprehensive unit tests for all business logic
+- Use async/await for asynchronous operations instead of callbacks or raw promises
+- Leverage TypeScript's strict mode for enhanced type checking
+
+@file ../tsconfig.json

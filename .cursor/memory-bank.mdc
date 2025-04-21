@@ -1,0 +1,186 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+ # Kanora Server - Development Memory Bank
+
+## Project Overview
+- Headless Node.js server application for music collection management
+- RESTful API with WebSocket support
+- Built with TypeScript, Express, and Prisma
+- SQLite for testing, PostgreSQL for production
+
+## Core Technical Decisions
+
+### 1. TypeScript Setup
+- Using TypeScript for type safety and better developer experience
+- Strict mode enabled for maximum type checking
+- Path aliases configured for cleaner imports
+- Target: ES2022 for modern JavaScript features
+
+### 2. Database Choices
+- **Production**: PostgreSQL
+  - Reason: Robust, scalable, great for relational data
+  - Handles complex queries well
+  - Strong community support
+- **Testing**: SQLite
+  - Reason: File-based, no setup required
+  - Perfect for CI/CD and local testing
+  - Faster test execution
+
+### 3. Project Structure
+```
+project-root/
+├── prisma/          # Database schema and migrations
+├── src/
+│   ├── config/      # Environment configuration
+│   ├── controllers/ # Route handlers
+│   ├── services/    # Business logic
+│   ├── repositories/# Data access
+│   ├── routes/      # API routing
+│   ├── middleware/  # Express middleware
+│   ├── utils/       # Helper functions
+│   └── __tests__/  # Test files
+```
+
+### 4. Environment Management
+- Separate .env files for different environments
+- Strong validation using Zod
+- Sensitive data never committed to version control
+- Test environment uses SQLite for simplicity
+
+### 5. Testing Strategy
+- Jest for testing framework
+- Supertest for HTTP assertions
+- SQLite database for testing
+- Separate test configuration
+- Coverage thresholds set to 80%
+
+### 6. API Documentation
+- OpenAPI/Swagger for API documentation
+- Interactive documentation available at runtime
+- Each endpoint documented with:
+  - Request/response schemas
+  - Authentication requirements
+  - Example payloads
+
+### 7. Error Handling
+- Centralized error handling middleware
+- Custom error classes for different scenarios
+- Structured error responses
+- Environment-aware error details
+
+### 8. Logging
+- Winston for structured logging
+- Different log levels for different environments
+- File-based logging for production
+- Console logging for development
+
+### 9. Security Measures
+- Helmet for security headers
+- CORS configuration
+- Rate limiting
+- JWT-based authentication (planned)
+- Request validation with express-validator
+
+### 10. Development Tooling
+- ESLint for code linting
+- Prettier for code formatting
+- Husky for git hooks
+- Lint-staged for pre-commit checks
+- npm-run-all for script orchestration
+
+## Current State
+
+### Completed Features
+1. ✅ Basic Express server setup
+2. ✅ Environment configuration
+3. ✅ Database setup with Prisma
+4. ✅ Health check endpoint
+5. ✅ Error handling middleware
+6. ✅ Logging system
+7. ✅ Testing infrastructure
+8. ✅ CI/CD pipeline
+9. ✅ API documentation
+10. ✅ Development tooling
+
+### Pending Features
+1. 🔄 Authentication system
+2. 🔄 User management
+3. 🔄 Artist management
+4. 🔄 Album management
+5. 🔄 Track management
+6. 🔄 Playlist management
+7. 🔄 WebSocket real-time updates
+
+## Database Schema
+```prisma
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  playlists Playlist[]
+}
+
+model Artist {
+  id      String   @id @default(uuid())
+  name    String
+  bio     String?
+  albums  Album[]
+}
+
+model Album {
+  id       String   @id @default(uuid())
+  title    String
+  year     Int?
+  artist   Artist   @relation(fields: [artistId], references: [id])
+  tracks   Track[]
+}
+
+model Track {
+  id        String     @id @default(uuid())
+  title     String
+  duration  Int
+  album     Album      @relation(fields: [albumId], references: [id])
+  playlists Playlist[]
+}
+
+model Playlist {
+  id      String   @id @default(uuid())
+  name    String
+  user    User     @relation(fields: [userId], references: [id])
+  tracks  Track[]
+}
+```
+
+## Development Workflow
+1. Create issue for new feature/bug
+2. Create feature branch
+3. Implement changes with tests
+4. Update documentation
+5. Create pull request
+6. Review and merge
+7. Deploy (future)
+
+## Testing Workflow
+1. Unit tests for business logic
+2. Integration tests for API endpoints
+3. SQLite database for test isolation
+4. Automated testing in CI/CD
+5. Coverage reporting to Codecov
+
+## Next Steps
+1. Implement authentication system
+2. Create user management endpoints
+3. Implement music library management
+4. Add WebSocket functionality
+5. Set up production deployment
+
+## Notes
+- Keep sensitive data in .env files
+- Always write tests for new features
+- Update API documentation for changes
+- Follow TypeScript best practices
+- Use conventional commits 

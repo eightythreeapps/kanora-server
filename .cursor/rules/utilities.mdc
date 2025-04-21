@@ -1,0 +1,59 @@
+---
+description: Rules to define how and when to implement utility classes
+globs: server/utilities/**/*.ts, client/utilities/**/*.ts
+alwaysApply: false
+---
+# Utilities
+Utility classes collections of pure functions that provide helper methods or common operations that do not depend on instance variables or application state.  
+
+Unlike services, repositories, and controllers, utility classes do not belong to the core application layers—they are stateless and used for general-purpose tasks like string manipulation, data formatting, encryption, or logging.
+
+Utility classes only contain static methods and do not depend on instances, state, environment variables etc. They should expect required parameters to be passed to them and should return results and not directly update databases, caches etc. 
+
+## General rules for Utlities
+- Implement a Utility class when logic is reusable across multiple services. E.g. date formatting.
+- When methods are purely functional and do not depend on the application state.
+- When you need to encapsulate helper functions in one place (e.g., encryption, validation, date formatting).
+- Do not use a utility class for business logic. That belongs in services.
+- Do not put database operations in utilit classes. Use repositories instead.
+- Do not put API calls in utility classes. Use repositories instead.
+
+## Example
+This is an example of how to define a utility class and how to use it within a service. 
+
+### HashUtil class defnition
+```
+import bcrypt from "bcrypt";
+
+export class HashUtil {
+  static async hashPassword(password: string): Promise<string> {
+    const salt = await bcrypt.genSalt(10);
+    return bcrypt.hash(password, salt);
+  }
+
+  static async comparePassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
+  }
+}
+```
+
+### Usage within a service 
+```
+import { HashUtil } from "../utils/HashUtil";
+import { UserRepository } from "../repositories/UserRepository";
+
+export class AuthService {
+  static async registerUser(email: string, password: string) {
+    const hashedPassword = await HashUtil.hashPassword(password);
+    return UserRepository.createUser(email, hashedPassword);
+  }
+
+  static async loginUser(email: string, password: string) {
+    const user = await UserRepository.findByEmail(email);
+    if (!user || !(await HashUtil.comparePassword(password, user.password))) {
+      throw new Error("Invalid credentials");
+    }
+    return user;
+  }
+}
+```

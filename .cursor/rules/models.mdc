@@ -1,0 +1,90 @@
+---
+description: 
+globs: src/server/models/**/*.ts
+alwaysApply: false
+---
+# Models
+Models define the structure of application data. They represent entities like User, Order, Product, etc. Models serve as a contract between layers. Repositories, services, and controllers rely on models.
+
+## Rules for implementing models
+- Models define data structures, not logic.
+- Ensure type safety with TypeScript when defining models. Use interfaces for lightweight models, use classes if instantiation is required.
+- Keep models independent of ORM logic
+- Use DTOs when API responses should differ from internal models.
+- Keep models lightweight. No business logic inside models.
+- Ensure models align with database schemas but remain independent of ORM-specific implementations.
+- Use explicit typing for fields (e.g., string, number, Date).
+- Include only data-related methods in classes (if using classes instead of interfaces). Consider utility classes if they can be used across models. Refer to [utilities.mdc](mdc:.cursor/rules/utilities.mdc)
+- DO NOT include database logic inside models. Repositories handle DB queries. Refer to [repository-rules.mdc](mdc:.cursor/rules/repository-rules.mdc)
+- DO NOT include request validation logic inside models. Middleware handles validation. Refer to [middleware-rules.mdc](mdc:.cursor/rules/middleware-rules.mdc)
+- DO NOT include business logic inside models. Services handle business logic. Refer to [service-rules.mdc](mdc:.cursor/rules/service-rules.mdc)
+
+### Bad - Mixing Model with business logic  
+```
+export class User {
+  constructor(public email: string, public password: string) {}
+
+  async hashPassword() { 
+    this.password = await bcrypt.hash(this.password, 10);  // ❌ Business logic inside model
+  }
+}
+```
+
+### Good - Delegate hashing to Service or Utility
+```
+import { HashUtil } from "../utils/HashUtil";
+
+export class User {
+  constructor(public id: string, public email: string, public passwordHash: string) {}
+
+  static async create(email: string, password: string) {
+    const hash = await HashUtil.hashPassword(password);
+    return new User(crypto.randomUUID(), email, hash);
+  }
+}
+```
+
+### Exmaple User model via a TypeScript interface
+```
+export interface User {
+  id: string;
+  email: string;
+  passwordHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+### Relationship with Other Layers
+- Repositories should use models for type safety when querying the database.
+- Services should use models to enforce structure on returned data.
+- Controllers should use models for request/response data validation (DTOs).
+- Middleware should be used to validate incoming request bodies against model interfaces.
+
+## DTOs
+- Use DTOs when API request/response structures differ from database models.
+- Keep DTOs separate from models to avoid exposing internal database structures.
+
+### Example DTO
+```
+export interface UserDTO {
+  id: string;
+  email: string;
+}
+```
+
+### Example usage in a controller
+```
+import { UserService } from "../services/UserService";
+import { Request, Response } from "express";
+import { UserDTO } from "../models/dto/UserDTO";
+
+export class UserController {
+  static async getUser(req: Request, res: Response) {
+    const user = await UserService.getUserById(req.params.id);
+    const userDTO: UserDTO = { id: user.id, email: user.email }; // ✅ Prevents exposing passwordHash
+    return res.json(userDTO);
+  }
+}
+```
+

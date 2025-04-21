@@ -1,0 +1,53 @@
+---
+description: High level applicaiton rules
+globs: **/*.ts, **/*.tsx
+alwaysApply: false
+---
+# Server application architecture
+This applicaiton has two main components: 
+
+1. The server application. This is a Node.js based application, written in Typescript. The server applicaiton is a RESTful API that runs as a headless server. All interactions will be via the API.
+
+## Clean Architecture
+The applicaiton should adhere to the following coding standards:
+
+- Separate concerns by organizing the app into layers (e.g., controllers, services, repositories)
+- Keep all business logic independent of frameworks (Express, Fastify, etc.).
+- Code should be testable, maintainable, and scalable.
+- Prevent direct dependencies between layers (e.g., the API layer doesn’t depend on database-specific code)
+
+### General principles to follow
+You should strive to keep the application well structured, modular, easily testable and fully documented. A very high level guide would be that **Controllers** are for handling HTTP requests, **Services** handle business logic, **Repositories** handle data access, **Middleware** for things like authentication, logging, error handling etc, **Utlities** to provide helper methods or common operations that do not depend on instance variables or application state and **Routes** to map URLs to Controllers, Routes should contain no business logic. 
+
+### Libraries
+#### Server libraries
+Refer to [server-libraries.mdc](mdc:.cursor/rules/server-libraries.mdc) for a list of libraries that should be used for the project.
+
+
+#### Client libraries
+Refer to [client-libraries.mdc](mdc:.cursor/rules/client-libraries.mdc) for a list of libraries that should be used for the project.
+
+### High level directory structure
+
+project-root/
+├── prisma/                # Prisma schema and migrations
+│   ├── schema.prisma      # Prisma schema definition
+│   ├── migrations/        # Migration history
+├── config/                # Environment configs
+│   ├── env.ts             # Config loader
+├── controllers/           # Route handlers (no business logic)
+├── services/              # Business logic (calls repositories)
+├── repositories/          # Direct DB interactions (using Prisma)
+├── routes/                # API routes
+├── middlewares/           # Express middlewares
+├── utils/                 # Utility functions/helpers
+├── app.ts                 # Express app setup
+└── server.ts              # Server entry point
+
+## Authentication
+Refer to [authentication.mdc](mdc:.cursor/rules/authentication.mdc) for the approach to take to authentication
+
+
+
+
+

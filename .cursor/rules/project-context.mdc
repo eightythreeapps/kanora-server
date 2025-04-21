@@ -1,0 +1,12 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Server application
+## Context
+The server is a headless server application that provides a RESTful API for the user to manage their music collection. The application is a headless NodeJS application, written in TypeScript, that provides a RESTful API and socket based access to music management functionality. 
+
+## Security
+- Keep sensitive data out of source code. 
+- Keep keys etc in .env files instead.

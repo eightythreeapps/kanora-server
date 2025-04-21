@@ -1,0 +1,149 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Cursor Rule: Error Handling in RESTful Node Server
+
+> All errors must be handled in a consistent, predictable, and secure manner. Avoid leaking stack traces or implementation details to the client. Use typed errors for known cases and centralized middleware to format responses.
+
+---
+
+## 🧱 Core Principles
+
+- ✅ **Fail loudly in development, fail gracefully in production**
+- ✅ **Use typed/custom errors for known error states**
+- ✅ **Never expose internal stack traces or DB messages to clients**
+- ✅ **All thrown errors must be caught and routed through the error middleware**
+- ✅ **Standardize error responses (e.g., shape, fields)**
+
+---
+
+## 🏷️ Error Types
+
+Use a base error class and extend it for specific cases:
+
+```typescript
+// utils/errors.ts
+export class AppError extends Error {
+  constructor(
+    public message: string,
+    public statusCode: number = 500,
+    public isOperational: boolean = true
+  ) {
+    super(message);
+    Error.captureStackTrace(this, this.constructor);
+  }
+}
+```
+
+Example custom error:
+
+```typescript
+export class NotFoundError extends AppError {
+  constructor(resource = "Resource") {
+    super(`${resource} not found`, 404);
+  }
+}
+```
+
+---
+
+## 📦 Throwing Errors
+
+Only throw instances of known errors inside services and controllers:
+
+```typescript
+if (!user) {
+  throw new NotFoundError("User");
+}
+```
+
+Avoid throwing raw `Error` or DB exceptions outside low-level utility layers.
+
+---
+
+## 🛑 Catching Errors
+
+Always use an **async error wrapper** or handle `try/catch`:
+
+```typescript
+// utils/catchAsync.ts
+export const catchAsync = (fn: Function) => (req, res, next) =>
+  Promise.resolve(fn(req, res, next)).catch(next);
+```
+
+Used like this:
+
+```typescript
+router.get("/user/:id", catchAsync(userController.getUser));
+```
+
+---
+
+## 🧼 Error Middleware
+
+Define centralized error middleware in `app.ts`:
+
+```typescript
+// middleware/errorHandler.ts
+import { AppError } from "../utils/errors";
+
+export function errorHandler(err, req, res, next) {
+  const statusCode = err.statusCode || 500;
+  const message = err.isOperational ? err.message : "Internal Server Error";
+
+  if (process.env.NODE_ENV !== "production") {
+    console.error(err);
+  }
+
+  res.status(statusCode).json({
+    success: false,
+    error: message,
+  });
+}
+```
+
+And plug it into your app:
+
+```typescript
+app.use(errorHandler);
+```
+
+---
+
+## 📦 Prisma + DB Error Translation
+
+Wrap DB-specific errors and translate them:
+
+```typescript
+import { Prisma } from "@prisma/client";
+
+try {
+  await prisma.user.create(...);
+} catch (err) {
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    throw new AppError("Duplicate email", 400);
+  }
+  throw err;
+}
+```
+
+---
+
+## 🔁 Optional: Error Codes & Docs
+
+For larger systems, define a set of internal error codes (e.g., `USR_404`, `AUTH_401`) and add them to the response body for easy client handling.
+
+---
+
+## 🔚 Summary
+
+| Error Type         | Status Code | Example Class      |
+|--------------------|-------------|--------------------|
+| Validation         | 400         | `ValidationError`  |
+| Unauthorized       | 401         | `UnauthorizedError`|
+| Forbidden          | 403         | `ForbiddenError`   |
+| Not Found          | 404         | `NotFoundError`    |
+| Conflict / Exists  | 409         | `ConflictError`    |
+| Server Error       | 500         | `AppError`         |

@@ -1,0 +1,47 @@
+---
+description: A list of the server side libraries that should be used in this project and what they are for
+globs: server/**/*.tsx
+alwaysApply: false
+---
+# Server libraries
+
+🔹 Core Libraries
+✅ Express – express (Minimal, fast web framework)
+✅ TypeScript – typescript, ts-node, @types/node, @types/express
+
+🔹 API & Middleware
+✅ CORS (Cross-Origin Resource Sharing) – cors
+✅ Helmet (Security headers) – helmet
+✅ Compression (Gzip compression for performance) – compression
+✅ Morgan (Request logging) – morgan
+✅ Express Rate Limit (Rate limiting for security) – express-rate-limit
+
+🔹 Database & ORM
+✅ Prisma ORM – @prisma/client, prisma (Schema-based database access)
+✅ PostgreSQL/MySQL/MongoDB Adapter (depending on your DB)
+
+PostgreSQL: pg
+MySQL: mysql2
+MongoDB: mongodb
+🔹 Authentication & Security
+✅ JWT Authentication – jsonwebtoken, bcryptjs (for password hashing)
+✅ Zod (for input validation) – zod
+✅ Dotenv (for environment variables) – dotenv
+
+🔹 WebSockets & Real-Time Features
+✅ Socket.io Server – socket.io
+✅ Redis (for WebSocket scaling, caching) – ioredis
+
+🔹 Utilities & Helper Libraries
+✅ uuid (for generating unique IDs) – uuid
+✅ date-fns (for date/time operations) – date-fns
+✅ Lodash (utility functions) – lodash
+
+🔹 Logging & Debugging
+✅ Winston (for logging) – winston
+✅ Pino (alternative to Winston, faster performance) – pino, pino-pretty
+
+🔹 Testing & Development
+✅ Jest (unit testing) – jest, ts-jest, @types/jest
+✅ Supertest (for API testing) – supertest, @types/supertest
+✅ ESLint & Prettier (linting & formatting) – eslint, prettier, eslint-config-prettier

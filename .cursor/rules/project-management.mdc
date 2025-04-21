@@ -1,0 +1,43 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Project Management
+
+## Repo
+Repository name: Kanora Server
+Repository URL: https://github.com/eightythreeapps/kanora-server
+Owner name: Eightythreeapps
+
+
+🆕 Create
+All work items must start as an issue with a clear title and description.
+Use appropriate labels (e.g. feature, bug, tech-debt, discussion, blocked) and assign to a milestone if applicable.
+
+📌 Plan
+Issues must be added to the MCP board under the Backlog column.
+During triage/planning meetings, promote issues to To Do when ready to be picked up.
+
+🚧 Work
+Move issues from To Do → In Progress when development begins.
+A Pull Request (PR) must be linked to the issue.
+All PRs should include the issue number in the title or body (Fixes #123).
+
+✅ Review
+Move to Review when a PR is opened and ready for feedback.
+A second contributor must approve the PR before merging (unless otherwise agreed).
+
+🚀 Done
+After merging, move the issue to Done.
+Close the issue only when the change is deployed or shipped (as agreed by the team).
+
+📊 Optional Enhancements
+Use custom fields for priority, estimate, or owner if the MCP template supports it.
+Link related issues (dependencies, epics) to maintain traceability.
+
+🧼 Rules of Thumb
+No issue? No work.
+One issue = one feature/fix/decision.
+Keep board status in sync with actual progress.
+Keep issues updated with comments or context shifts.
