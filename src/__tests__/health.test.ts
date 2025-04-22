@@ -1,14 +1,28 @@
 import request from 'supertest';
-import express from 'express';
-import { setupRoutes } from '../routes';
+import { Express } from 'express';
+import { createApp } from '../app';
 
 describe('Health Check Endpoint', () => {
-  const app = express();
-  app.use('/api/v1', setupRoutes());
+  let app: Express;
 
-  it('should return 200 OK with status message', async () => {
+  beforeAll(async () => {
+    app = await createApp();
+  });
+
+  it('should return 200 OK with health status', async () => {
     const response = await request(app).get('/api/v1/health');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok' });
+    expect(response.body).toMatchObject({
+      status: 'ok',
+      database: {
+        status: 'connected',
+      },
+      environment: expect.any(String),
+      memory: {
+        usage: expect.any(Object),
+      },
+      timestamp: expect.any(String),
+      uptime: expect.any(Number),
+    });
   });
 }); 

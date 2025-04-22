@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { ValidationError as ExpressValidationError, Result } from 'express-validator';
+import { Result, ValidationError } from 'express-validator';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { AppError, ValidationError, ValidationErrorDetail } from '../utils/errors';
+import { AppError, ValidationError as CustomValidationError, ValidationErrorDetail } from '../utils/errors';
 import logger from '../utils/logger';
 
 export const errorHandler = (
-  err: Error | Result<ValidationErrorDetail>,
+  err: Error | Result<ValidationError>,
   req: Request,
   res: Response,
   _next: NextFunction
@@ -24,15 +24,15 @@ export const errorHandler = (
   }
 
   // Handle validation errors from express-validator
-  if (Array.isArray(err)) {
-    const validationErrors: ValidationErrorDetail[] = err.map(error => ({
+  if ('array' in err && typeof err.array === 'function') {
+    const validationErrors: ValidationErrorDetail[] = err.array().map(error => ({
       type: error.type,
       msg: error.msg,
-      param: error.param,
-      location: error.location,
+      param: error.type === 'field' ? error.path : error.type,
+      location: error.type === 'field' ? error.location : 'body'
     }));
 
-    const validationError = new ValidationError('Validation failed', validationErrors);
+    const validationError = new CustomValidationError('Validation failed', validationErrors);
     res.status(400).json(validationError.toJSON());
     return;
   }
