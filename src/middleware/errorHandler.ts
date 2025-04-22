@@ -33,7 +33,12 @@ export const errorHandler = (
     }));
 
     const validationError = new CustomValidationError('Validation failed', validationErrors);
-    res.status(400).json(validationError.toJSON());
+    const errorResponse = validationError.toJSON();
+    res.status(400).json({
+      success: false,
+      error: errorResponse.message,
+      details: errorResponse.details
+    });
     return;
   }
 
@@ -44,13 +49,23 @@ export const errorHandler = (
       code: err.code,
       meta: err.meta,
     });
-    res.status(statusCode).json(appError.toJSON());
+    const errorResponse = appError.toJSON();
+    res.status(statusCode).json({
+      success: false,
+      error: errorResponse.message,
+      details: errorResponse.details
+    });
     return;
   }
 
   // Handle custom AppError instances
   if (err instanceof AppError) {
-    res.status(err.statusCode).json(err.toJSON());
+    const errorResponse = err.toJSON();
+    res.status(err.statusCode).json({
+      success: false,
+      error: errorResponse.message,
+      details: errorResponse.details
+    });
     return;
   }
 
@@ -60,5 +75,10 @@ export const errorHandler = (
     500,
     process.env.NODE_ENV === 'development' ? { stack: err instanceof Error ? err.stack : undefined } : undefined
   );
-  res.status(500).json(internalError.toJSON());
+  const errorResponse = internalError.toJSON();
+  res.status(500).json({
+    success: false,
+    error: errorResponse.message,
+    details: errorResponse.details
+  });
 }; 
